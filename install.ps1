@@ -75,8 +75,10 @@ function Install-Item([string]$src, [string]$target) {
   $parent = Split-Path -Parent $target
   New-Item -ItemType Directory -Force -Path $parent | Out-Null
   Copy-Item -LiteralPath $src -Destination $target -Recurse -Force
-  Get-ChildItem -LiteralPath $target -Recurse -Directory -Filter '__pycache__' -ErrorAction SilentlyContinue |
-    Remove-Item -Recurse -Force
+  if (Test-Path -LiteralPath $target -PathType Container) {
+    Get-ChildItem -LiteralPath $target -Recurse -Directory -Filter '__pycache__' -ErrorAction SilentlyContinue |
+      Remove-Item -Recurse -Force
+  }
   $script:NewManifest += $target
   Write-Info "copy  $target"
 }

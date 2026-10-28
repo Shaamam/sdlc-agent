@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end installer check in a sandboxed home. Runs install.sh on macOS/Linux
-and install.ps1 on Windows: install, re-install, conflict refusal, uninstall."""
+and install.ps1 on Windows: install, re-install, conflict refusal, uninstall.
+Set SMOKE_INSTALLER=ps1 to exercise install.ps1 with pwsh on macOS/Linux."""
 import json
 import os
 import shutil
@@ -11,6 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 WINDOWS = os.name == "nt"
+USE_PS1 = WINDOWS or os.environ.get("SMOKE_INSTALLER") == "ps1"
 MARKER = "hooks/sdlc-agent/guard.py"
 
 ORIGINAL_SETTINGS = {
@@ -20,8 +22,8 @@ ORIGINAL_SETTINGS = {
 
 
 def run_installer(env, *flags, expect_ok=True):
-    if WINDOWS:
-        shell = shutil.which("powershell") or shutil.which("pwsh")
+    if USE_PS1:
+        shell = (shutil.which("powershell") if WINDOWS else None) or shutil.which("pwsh")
         ps_flags = {"--uninstall": "-Uninstall", "--force": "-Force", "--purge": "-Purge"}
         cmd = [shell, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(ROOT / "install.ps1"),
                *[ps_flags[f] for f in flags]]
@@ -93,7 +95,7 @@ def main():
         run_installer(env, "--uninstall", "--purge")
         check(not agent_home.exists(), "--purge removes state")
 
-        if not WINDOWS:
+        if not USE_PS1:
             run_installer(env, "--copy")
             skill = claude / "skills" / "ship"
             check(skill.is_dir() and not skill.is_symlink(), "--copy installs real files")
